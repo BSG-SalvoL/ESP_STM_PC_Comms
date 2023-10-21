@@ -1,0 +1,43 @@
+{
+  "car": {
+    "speed": 10,
+    "gear": "1",
+    "drs": {
+      "Available": 1,
+      "Enabled": 0
+    },
+    "fuel": 10,
+    "tyres": {
+      "temperature": [70, 70, 70, 70],
+      "wear": [5, 5, 5, 5]
+    },
+    "ers": 85,
+    "rpm": 7,
+    "brakeTemp": [500, 500, 500, 500],
+    "pitLane": 1
+  },
+  "timings": {
+    "position": 2,
+    "currentLap": 10,
+    "totalLaps": 20,
+    "bestLapTime": "00:00",
+    "deltaToBest": "",
+    "deltaToAllTime": "N/A",
+    "flag": "GREEN"
+  },
+  "controls": {
+    "brakeBias": 60,
+    "abs": {
+      "level": 2,
+      "active": 0
+    },
+    "tractionControl": {
+      "level": 2,
+      "active": 0
+    }
+  },
+  "system": {
+    "gameRunning": 0,
+    "shRunningTime": 0
+  }
+}

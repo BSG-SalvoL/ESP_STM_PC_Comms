@@ -1,0 +1,51 @@
+'' + truncate([DataCorePlugin.GameData.NewData.SpeedKmh])+ ';' +
+
+[DataCorePlugin.GameData.NewData.Position]+ ';' +
+
+[DataCorePlugin.GameData.NewData.CurrentLap]+ ';' +
+[DataCorePlugin.GameData.NewData.TotalLaps]+ ';' +
+
+left([DataCorePlugin.GameData.NewData.BestLapTime], 3, 9)+ ';' +
+
+driverdeltatobest([DataCorePlugin.GameData.NewData.Position])+ '.;' +
+
+if([PersistantTrackerPlugin.AllTimeBestLiveDeltaSeconds] = 0, 'N/A', [PersistantTrackerPlugin.AllTimeBestLiveDeltaSeconds])+ ';' +
+
+[DataCorePlugin.GameData.NewData.DRSAvailable]+ ';' +
+
+[DataCorePlugin.GameData.NewData.DRSEnabled]+ ';' +
+
+round([DataCorePlugin.GameData.NewData.FuelPercent], 1)+ ';' +
+
+[DataCorePlugin.GameData.NewData.TyreTemperatureFrontLeft]+ ';' +
+
+[DataCorePlugin.GameData.NewData.TyreTemperatureFrontRight]+ ';' +
+
+[DataCorePlugin.GameData.NewData.TyreTemperatureRearLeft]+ ';' +
+
+[DataCorePlugin.GameData.NewData.TyreTemperatureRearRight]+ ';' +
+
+truncate([ERSPercent]) + ';' +
+
+[DataCorePlugin.GameData.NewData.BrakeBias]+ ';' +
+
+truncate([DataCorePlugin.GameData.NewData.CarSettings_CurrentDisplayedRPMPercent]*15/100) + ';' +
+
+if([DataCorePlugin.GameData.NewData.Flag_Name] == '', 'GREEN', ucase([DataCorePlugin.GameData.NewData.Flag_Name]))+ ';' +
+
+[DataCorePlugin.GameRunning]+ ';' +
+[ABSLevel] + ';' +
+[ABSActive] + ';' +
+[BrakeTemperatureFrontLeft] + ';' + 
+[BrakeTemperatureFrontRight] + ';' + 
+[BrakeTemperatureRearLeft] + ';' + 
+[BrakeTemperatureRearRight] + ';' +
+[IsInPitLane] + ';' +
+[TCLevel] + ';' +
+[TCActive] + ';' +
+[TyreWearFrontLeft] + ';' +
+[TyreWearFrontRight] + ';' +
+[TyreWearRearLeft] + ';' +
+[TyreWearRearRight] + ';' +
+[Gear] + ';' + 
+[SystemInfoPlugin.Uptime]
