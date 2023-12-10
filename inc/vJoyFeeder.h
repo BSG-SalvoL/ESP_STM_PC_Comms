@@ -1,9 +1,15 @@
 #pragma once
+
+#ifndef __VJOYFEEDER__
+#define __VJOYFEEDER__
+
 #include "./winLibs/stdafx.h"
 #include "./VJ_Helpers/public.h"
 #include "./VJ_Helpers/vjoyinterface.h"
 #include "config.h"
 #include "utils.h"
+#include "buttons.h"
+
 #include <vector>
 #include <string>
 
@@ -26,6 +32,9 @@ private:
     int serial_result;
     int stat = 0;
     std::vector<const char*> log; 
+    
+    uint64_t btn_state1 = 53453456342, btn_state2 = 3456467;
+    std::vector<Button*> buttons;
 
     static TH_data data;
 
@@ -42,7 +51,9 @@ private:
         check_vjoydriver();
         acquireDevice();
         iReport.bDevice = VJOY_Conf.VJOY_DEVICE_ID;
-        //run();
+        for (int i = 1; i <= VJOY_Conf.VJOY_BUTTONS; i++) {
+            buttons.push_back(new Button(i, false));
+        }
     }
 
     void check_vjoydriver() {
@@ -140,13 +151,13 @@ private:
         return mthread;
     }
 public:
-    JOYSTICK_POSITION_V2 iReport; // The structure that holds the full position data
-    static bool acquired;
-    static VJoyFeeder& get_feeder()
-    {
+    static VJoyFeeder& getInstance() {
         static VJoyFeeder instance;
         return instance;
     }
+    JOYSTICK_POSITION_V2 iReport; // The structure that holds the full position data
+    static bool acquired;
+
     static bool is_acquired() {
         return VJoyFeeder::acquired;
     }
@@ -197,6 +208,7 @@ public:
     void add_to_log(std::string str) {push_to_log_vector(log, str);}
     std::vector<const char*> get_log() {return log;}
     TH_data get_data() {return data;}
+    std::vector<Button*>* getButtons() {return &buttons;}
 
     bool update() {
         //push_to_log_vector(log, string_format("Feeding vJoy device"));
@@ -228,3 +240,5 @@ DWORD WINAPI handleJoystick(LPVOID lpParam) {
     }
     return 0;
 }
+
+#endif

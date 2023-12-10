@@ -18,132 +18,43 @@
 //STANDARD IMPORTS
 #include <iostream>
 #include <string>
+
 //CUSTOM IMPORTS
 #include "./winLibs/SerialPort.hpp"
+
+#include "SG_VolBoard.h"
+#include "SimHubFeeder.h"
+#include "vJoyFeeder.h"
+
+#include "gfx_adapter.h"
 #include "config.h"
 #include "buttons.h"
 #include "utils.h"
-#include "mediatorStruct.h"
 
 static void glfw_error_callback(int error, const char* description)
 {
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-class GFX_Adapter {
-  private: 
-    int width, height;
-    int xStart, yStart;
-    ImColor lastColor, lastbgcolor;
-  public:
-    GFX_Adapter(int width, int height, int xStart, int yStart) {
-        this->width = width;
-        this->height = height;
-        this->xStart = xStart;
-        this->yStart = yStart;
-    }
-    void cust_drawLCD() {
-        fillRect(0, 50, this->width, this->height, 0x0000);
-        drawRect(0, 50, this->width, this->height, 0xffff);
-    }
-    void drawPixel(uint16_t x, uint16_t y, uint16_t color) {
-        auto draw = ImGui::GetWindowDrawList();
-        draw->AddCircleFilled(ImVec2(x+xStart, y+yStart), 1, (ImU32)rgb565_to_um32(color));
-    } 
-    void drawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t color) {
-        auto draw = ImGui::GetWindowDrawList();
-        draw->AddLine(ImVec2(x0+xStart, y0+yStart), ImVec2(x1+xStart, y1+yStart), ImColor(rgb565_to_um32(color)));
-    }
-    void drawFastVLine(uint16_t x0, uint16_t y0, uint16_t length, uint16_t color) {
-        auto draw = ImGui::GetWindowDrawList();
-        draw->AddLine(ImVec2(x0+xStart, y0+yStart), ImVec2(x0+xStart, yStart+y0+length), ImColor(rgb565_to_um32(color)));
-    }
-    void drawFastHLine(uint8_t x0, uint8_t y0, uint8_t length, uint16_t color) {
-        auto draw = ImGui::GetWindowDrawList();
-        draw->AddLine(ImVec2(x0+xStart, y0+yStart), ImVec2(xStart+x0+length, yStart+y0), ImColor(rgb565_to_um32(color)));
-    }
-    void drawRect(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h, uint16_t color) {
-        auto draw = ImGui::GetWindowDrawList();
-        draw->AddRect(ImVec2(x0+xStart, y0+yStart), ImVec2(xStart+x0+w, yStart+y0+h), ImColor(rgb565_to_um32(color)));
-    }
-    void fillRect(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h, uint16_t color) {
-        auto draw = ImGui::GetWindowDrawList();
-        draw->AddRectFilled(ImVec2(x0+xStart, y0+yStart), ImVec2(xStart+x0+w, yStart+y0+h), ImColor(rgb565_to_um32(color)));
-    }
-    void drawCircle(uint16_t x0, uint16_t y0, uint16_t r, ImColor color) {
-        auto draw = ImGui::GetWindowDrawList();
-        draw->AddCircle(ImVec2(xStart+x0, yStart+y0), r, color, 0);
-            
-    }
-    void fillCircle(uint16_t x0, uint16_t y0, uint16_t r, ImColor color) {
-        auto draw = ImGui::GetWindowDrawList();
-        draw->AddCircleFilled(ImVec2(xStart+x0, yStart+y0), r, color, 0);
-    }
-    void drawRoundRect(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h, uint16_t radius, uint16_t color) {
-        auto draw = ImGui::GetWindowDrawList();
-        draw->AddRectFilled(ImVec2(xStart+x0, yStart+y0), ImVec2(xStart+x0+w, yStart+y0+h), ImColor(rgb565_to_um32(color)), radius);
-    }
-    void fillRoundRect(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h, uint16_t radius, uint16_t color) {
-        auto draw = ImGui::GetWindowDrawList();
-        draw->AddRectFilled(ImVec2(xStart+x0, yStart+y0), ImVec2(xStart+x0+w, yStart+y0+h), ImColor(rgb565_to_um32(color)), radius);
-    }
-    void drawTriangle(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color) {
-        auto draw = ImGui::GetWindowDrawList();
-        draw->AddTriangle(ImVec2(xStart+x0, yStart+y0), ImVec2(xStart+x1, yStart+y1), ImVec2(xStart+x2, yStart+y2), ImColor(rgb565_to_um32(color)));
-    }
-    void fillTriangle(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color) {
-        auto draw = ImGui::GetWindowDrawList();
-        draw->AddTriangleFilled(ImVec2(xStart+x0, yStart+y0), ImVec2(xStart+x1, yStart+y1), ImVec2(xStart+x2, yStart+y2), ImColor(rgb565_to_um32(color)));
-    }
-    void drawChar(uint16_t x, uint16_t y, char c, uint16_t color, uint16_t bg, uint8_t size) {
-        auto draw = ImGui::GetWindowDrawList();
-        setCursor(xStart+x, yStart+y);
-        setTextColor(color, bg);
-        setTextSize(size);
-        print("%c", c);
-    }
-    void setCursor(int16_t x0, int16_t y0) {
-        ImGui::SetCursorPos(ImVec2(x0+xStart, y0+yStart));
-    }
-    void setTextColor(uint16_t color) {
-        lastColor = ImColor(rgb565_to_um32(color));
-    }
-    void setTextColor(uint16_t color, uint16_t backgroundcolor) {
-        lastColor = ImColor(rgb565_to_um32(color));
-        lastbgcolor = ImColor(rgb565_to_um32(backgroundcolor));
-    }
-    void setTextSize(uint8_t size) {
-        auto draw = ImGui::GetWindowDrawList();
-        ImGui::SetWindowFontScale(1+(0.2*size));
-    }
-    void setTextWrap(boolean w) {
-    }
-    void fillScreen(uint16_t color) {
-        auto draw = ImGui::GetWindowDrawList();
-        draw->AddRectFilled(ImVec2(xStart, yStart), ImVec2(xStart+width, yStart+height), ImColor(rgb565_to_um32(color)));
-    }
-    template<typename... Args>
-    void print(const char* fmt, Args&&... args) {
-        ImGui::Text(fmt, args...);
-    }
-};
-
-
 class SG_GUI {
     private:
         GLFWwindow* window;
         const char* glsl_version = "#version 130";
         ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+        
         GFX_Adapter *tft;
+        
+        SimHubFeeder SH_Feeder = SimHubFeeder::getInstance();
+        VJoyFeeder VJ_Feeder = VJoyFeeder::getInstance();
+        
 
         bool demo_flag = false;
         int win_x = 1400, win_y = 700;
-        int rw_enc_size_x  = 245, rw_enc_size_y = 120;
+        int rw_enc_size_x = 245, rw_enc_size_y = 120;
         int com_size_x = 290, com_size_y = rw_enc_size_y;
         int dbgtmp = 0;
 
         vector<Button*>* buttons;
-        uint64_t *btn_state1, *btn_state2;
         int pov_idx[4]; 
         ImVec4 col_disabled = ImColor(0.4f, 0.4f, 0.4f, 0.5f);
         ImVec4 col_background = ImColor(0.2f, 0.2f, 0.2f, 1.f);
@@ -154,28 +65,24 @@ class SG_GUI {
         ImVec4 col_yellow = ImColor(1.f, 1.f, 0.f, 1.f);
         ImVec4 col_green = ImColor(0.f, 1.f, 0.f, 1.f); 
 
-        SG_GUI(vector<Button*>* btn, uint64_t* state1, uint64_t* state2) {
-            this->buttons = btn; 
-            this->btn_state1 = state1;
-            this->btn_state2 = state2;
+        SG_GUI() {
+            this->buttons = VJ_Feeder.getButtons();
             this->tft = new GFX_Adapter(480, 320, 500, 180);
+            this->vol_board = nullptr;
             pov_idx[0] = 1;
             pov_idx[1] = 2;
             pov_idx[2] = 3;
             pov_idx[3] = 4;
-            SG_GUI::inst = NULL;
             init_grafics();
         }
     public:
-        static SG_GUI* inst;
-        static SG_GUI& get_gui(vector<Button*>* btn, uint64_t* state1, uint64_t* state2)
+        SG_VolBoard* vol_board;    
+        static SG_GUI& getInstance()
         {
-            if(SG_GUI::inst == NULL)
-                SG_GUI::inst = new SG_GUI(btn, state1, state2);
-            //static SG_GUI instance;
-            return *inst;
+            static SG_GUI instance;
+            return instance;
         }
-        
+
         bool init_grafics() {
             glfwSetErrorCallback(glfw_error_callback);
             if (!glfwInit())
@@ -210,25 +117,55 @@ class SG_GUI {
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
         }
-
+        unsigned int searchStrVec(string str, vector<char*> vec) {
+            unsigned int index = 0;
+            for (char* vstr : vec) {
+                if (string(vstr) == str.substr(4, str.length())) 
+                    return index;
+                index++;
+            }
+            return 0;
+        }
         void draw_STM32COM(int pos_x, int pos_y) {
+            string* ser_names = vol_board->getNames();
+            static const char* conn_types[] = {"UDP", "TCP", "BLE", "SERIAL"};
             vector<char*> v = SerialPort::getComPorts();
-            static int item_current = 0;
-            char** items = &v[0];
-            ImGui::Begin("Select COM Port For STM32"); 
+
+            static int send_com_current = searchStrVec(ser_names[0], v);
+            static int receive_com_current = searchStrVec(ser_names[1], v);
+            static int conn_type = 2; 
+            static int last_conn_type = 2;
+
+            char** comports = &v[0];
+
+            static int current_log_item = 0;
+
+            ImGui::Begin("Config Communication With The Board"); 
             ImGui::SetWindowSize(ImVec2(1400/2, 650/2), true);                          
             ImGui::SetWindowPos(ImVec2(pos_x, pos_y), true);
-            ImGui::Combo("##", &item_current, items, v.size());
+            ImGui::Combo("##A", &conn_type, conn_types, 4); ImGui::SameLine(); ImGui::Text("Connection Type");
+            if(conn_type == 2) {//BLE 
+                ImGui::Combo("##B", &send_com_current, comports, v.size()); ImGui::SameLine(); ImGui::Text("Send COM Port");
+                ImGui::Combo("##C", &receive_com_current, comports, v.size()); ImGui::SameLine(); ImGui::Text("Receive COM Port");
+            }           
             ImGui::SameLine();
-            if (ImGui::Button("Reload")) {                            // Buttons return true when clicked (most widgets return true when edited/activated)
-            
+            if (ImGui::Button("Reload")) {                         // Buttons return true when clicked (most widgets return true when edited/activated)
+                if (conn_type != last_conn_type) {
+                    //TODO: change type of connection
+                }
+                string* tmp = new string[3] {string(v[send_com_current]), string(v[receive_com_current]), conn_types[conn_type]};
+                vol_board->reload(tmp);
+                delete[] tmp;
+                last_conn_type = conn_type;
             }
-            ImGui::Text("Selected: %s", v[item_current]);
+            ImGui::Text("Selected: %s To Send Data and %s To Receive", v[send_com_current], v[receive_com_current]);
             ImGui::SameLine();
-            if(true) // CHECK CONNECTION WITH COM
+            if(vol_board->is_connected()) // CHECK CONNECTION WITH COM
                 ImGui::TextColored(col_green, "Status OK");
             else
                 ImGui::TextColored(col_red, "Status ERROR");
+            current_log_item = vol_board->get_log().size() - 1;
+            ImGui::ListBox("LOG", &current_log_item, &vol_board->get_log()[0], vol_board->get_log().size(), 10);
             ImGui::End();
         }
 
@@ -238,10 +175,9 @@ class SG_GUI {
             static int item_running = 0;
             static int current_log_item = 0;
             static bool first = true;
-            SimHubFeeder* feeder = &mediator.sh_feeder;
             char** items = &v[0];
             if(first) {
-                feeder->Connect();
+                SH_Feeder.Connect();
                 first = false;
             }
             ImGui::Begin("Select COM Port For SIMHub Feeder");  
@@ -251,41 +187,42 @@ class SG_GUI {
             ImGui::SameLine();
             if (ImGui::Button("Reload")) {                          // Buttons return true when clicked (most widgets return true when edited/activated)
                 SIMHUB_Conf.SH_COM_PORT = string(v[item_current]);
-                feeder->reloadSH();
+                SH_Feeder.reloadSH();
                 item_running = item_current;
             }
             ImGui::Text("Running on: %s;", v[item_running]);
             ImGui::SameLine();
-            if(feeder->Is_Serial_Connected()) // CHECK CONNECTION WITH COM
+            if(SH_Feeder.Is_Serial_Connected()) // CHECK CONNECTION WITH COM
                 ImGui::TextColored(col_green, "COM PORT OPENED SUCCESSFULLY");
             else
                 ImGui::TextColored(col_red, "COM ERROR");
             ImGui::Text("SimHub Status: ");
             ImGui::SameLine();
-            if(feeder->Is_SH_Connected()) // CHECK CONNECTION WITH SimHub
+            if(SH_Feeder.Is_SH_Connected()) // CHECK CONNECTION WITH SimHub
                 ImGui::TextColored(col_green, "OK");
             else
                 ImGui::TextColored(col_red, "ERROR OR NOT CONNECTED");
-            current_log_item = feeder->get_log().size() - 1;
-            ImGui::ListBox("LOG", &current_log_item, &feeder->get_log()[0], feeder->get_log().size(), 10);
+            ImGui::SameLine();
+            ImGui::Text("Execution Time: %f/s", SH_Feeder.execTime);
+            current_log_item = SH_Feeder.get_log().size() - 1;
+            ImGui::ListBox("LOG", &current_log_item, &SH_Feeder.get_log()[0], SH_Feeder.get_log().size(), 10);
             ImGui::End();
         }
 
         void draw_VjoyStatus(int pos_x, int pos_y) { 
             static bool first = true;
-            static VJoyFeeder* feeder = &mediator.vJoyFeeder;
-            static vector<const char*> v = feeder->getVJoyDevices();
-            vector<const char*>* log = feeder->get_data().log;
+            static vector<const char*> v = VJ_Feeder.getVJoyDevices();
+            vector<const char*>* log = VJ_Feeder.get_data().log;
             static int current_idx = 0;
             static int current_log_item = 0;
             static std::string test = "TEST";
             if(first) {
-                v = feeder->getVJoyDevices();
-                feeder->add_to_log(string_format("ID: %d", VJOY_Conf.VJOY_DEVICE_ID));
+                v = VJ_Feeder.getVJoyDevices();
+                VJ_Feeder.add_to_log(string_format("ID: %d", VJOY_Conf.VJOY_DEVICE_ID));
                 first = false;
             }
             if(v[0] == "No Devices Found")
-                v = feeder->getVJoyDevices();
+                v = VJ_Feeder.getVJoyDevices();
             const char** items = &v[0];
             ImGui::Begin("Vjoy Status"); 
             ImGui::SetWindowSize(ImVec2(1400/2, 650/2), true);                          
@@ -306,23 +243,23 @@ class SG_GUI {
             }
             ImGui::SameLine();
             if (ImGui::Button("Reload")) {
-                feeder->add_to_log(string_format("IDX: %d", current_idx));
-                v = feeder->getVJoyDevices();
-                feeder->reload();
+                VJ_Feeder.add_to_log(string_format("IDX: %d", current_idx));
+                v = VJ_Feeder.getVJoyDevices();
+                VJ_Feeder.reload();
             }
             ImGui::Text("Selected: "); ImGui::SameLine();
             ImGui::Text("%s", v[current_idx]);
             ImGui::SameLine();
-            ImGui::Text("Counter: %d", feeder->get_data().counter);
+            ImGui::Text("Counter: %d", VJ_Feeder.get_data().counter);
             ImGui::SameLine();
             if(VJoyFeeder::is_acquired()) {// CHECK CONNECTION WITH VjoyDevice
                 ImGui::TextColored(col_green, "Status OK");
-                feeder->update();
+                VJ_Feeder.update();
             }
             else
                 ImGui::TextColored(col_red, "Status ERROR or Not Connected");
-            current_log_item = feeder->get_log().size() - 1;
-            ImGui::ListBox("LOG", &current_log_item, &feeder->get_log()[0], feeder->get_log().size(), 10);
+            current_log_item = VJ_Feeder.get_log().size() - 1;
+            ImGui::ListBox("LOG", &current_log_item, &VJ_Feeder.get_log()[0], VJ_Feeder.get_log().size(), 10);
             ImGui::End();
         }
 
@@ -356,7 +293,8 @@ class SG_GUI {
             tft->cust_drawLCD();
 
             // **************************** EMULATE HERE ****************************
-            LCD_DATA_V2 data = mediator.sh_feeder.parsedData;
+            /*  DA CONVERTIRE PRENDENDO I DATI DALLA CLASSE DATA e DATA CONVERTER
+            LCD_DATA_V2 data = ((Mediator*)mediator)->sh_feeder.parsedData;
             uint8_t rpm = (data.gear__rpm_leds & 0x0F);
             tft->setCursor(40, 20);
             ImColor coltmp = ImColor(col_red);
@@ -371,13 +309,14 @@ class SG_GUI {
                 else
                     tft->drawCircle(25+30*i, 0, 10, ImColor(col_white));
             }
+            */
             // **********************************************************************
 
             ImGui::End();
         }
 
         void draw_TAB_buttons() {
-            JOYSTICK_POSITION_V2 pos = mediator.vJoyFeeder.iReport;
+            JOYSTICK_POSITION_V2 pos = VJ_Feeder.iReport;
             uint32_t state = pos.lButtons;
             static uint8_t cols = 8, spacing = 4;
             ImGui::Begin("Buttons", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground |
@@ -585,9 +524,5 @@ class SG_GUI {
             glfwTerminate();
         }
 };
-
-SG_GUI* SG_GUI::inst = NULL;
-
-
 
 #endif

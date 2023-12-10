@@ -11,10 +11,9 @@
 
 #include <chrono>
 #include <bitset>
-#include "vJoyFeeder.h"
 #include "DataStructs.h"
+#include "SG_VolBoard.h"
 
-#define ArduinoNameRX "\\\\.\\COM12"
 #define SH_ERROR_SUCCESS 1
 #define SH_ERROR_FAILED -1
 #pragma pack(1)
@@ -29,24 +28,25 @@ class SimHubFeeder
 {
 private:
     SerialPort *Serial;
-    SerialPort *Arduino;
     ARQSerial *arqserial;
     char SerialBuffer[255];
-    std::vector<const char*> log;
     bool SH_CONNECTED;
+    
+    std::vector<const char*> log;
     SimHubFeeder()
     {
-        vjoyfeeder = NULL;
         SH_CONNECTED = false;
+        execTime = 0;
+        vol_board = nullptr;
     }
     HANDLE mthread;
 public:
     string actualmsg, resmsg;
     LCD_DATA_V2 parsedData;
-    VolanteData v_data;
-    VJoyFeeder* vjoyfeeder;
+    float execTime;
+    SG_VolBoard* vol_board;
 
-    static SimHubFeeder &get_feeder()
+    static SimHubFeeder &getInstance()
     {
         static SimHubFeeder instance;
         return instance;
@@ -75,7 +75,6 @@ public:
         Serial = new SerialPort(string_format("%s%s", "\\\\.\\", SIMHUB_Conf.SH_COM_PORT.c_str()).c_str(), 2000000);
         arqserial = new ARQSerial(Serial);
         arqserial->setIdleFunction(idle);
-        Arduino = new SerialPort(ArduinoNameRX, 115200);
         SH_CONNECTED = false;
         run();
         add_to_log("SimHub Thread Started");
@@ -438,64 +437,31 @@ public:
     }
 
     void Command_CustomProtocolData(string actualmsg) {
-        auto tmr_start = chrono::high_resolution_clock::now();
-        static auto tmr_retry = chrono::high_resolution_clock::now();
+        
         arqserial->Write(0x15);
         arqserial->flush();
 
-        json shdata = *(serialData_to_JSON(actualmsg));
-        shdata["packet_type"] = "SH";
+        try {
+            json shdata = *(serialData_to_JSON(actualmsg));
+            shdata["command"] = "SH";
+            if(vol_board != nullptr)
+                vol_board->setSH(shdata);
+            if(vol_board != nullptr) {
+                vol_board->notify = true;
+                cout << "TEST3: " << endl;
+            }
+            else {
+                this->vol_board = SG_GUI::getInstance().vol_board;
+            }
+        }
+        catch (const std::exception& e) {
+            // Code to handle the exception
+            std::cout << "Exception caught on Passing Data to Board Class: " << e.what() << std::endl;
+        }
+
         //std::cout << std::setw(4) << shdata << "\n\n";
         //std::cout << shdata.dump() << "\n\n";
 
-        if(Arduino->isConnected()) {
-            actualmsg += "\n";
-            Arduino->writeSerialPort(actualmsg.c_str(), actualmsg.length());
-            if(Arduino->available()) {
-                Arduino->readSerialPort(SerialBuffer, 254);
-                //cout << "RECEIVED BACK: " << SerialBuffer << endl;
-                if (strstr(SerialBuffer, "NO_VL_DATA")) {}
-                else {
-                    vjoyfeeder->iReport.lButtons = ~v_data.mcp_btn;
-                    memcpy((void*)&v_data, (void*)SerialBuffer, sizeof(v_data));
-                    system("cls");
-                    cout << "BTN: " << std::bitset<16>(v_data.mcp_btn) << "\n";
-                    cout << "ENC: " << std::bitset<16>(v_data.mcp_enc) << "\n";
-                    cout << "EXT: " << std::bitset<16>(v_data.mcp_ext) << "\n";
-                    cout << "RW1: " << std::bitset<16>(v_data.rw1) << "\n";
-                    cout << "RW2: " << std::bitset<16>(v_data.rw2) << "\n";
-                    cout << "RW3: " << std::bitset<16>(v_data.rw3) << "\n";
-                    cout << "RW4: " << std::bitset<16>(v_data.rw4) << "\n";
-                    cout << "RW5: " << std::bitset<16>(v_data.rw5) << "\n";
-                    cout << "RW6: " << std::bitset<16>(v_data.rw6) << "\n";
-                    cout << "CLU: " << std::bitset<16>(v_data.clutch) << "\n";
-                    cout << "TG0: " << std::bitset<16>(v_data.tg0) << "\n";
-                }
-            }
-            /*
-            while(Arduino->available()) {
-                resmsg += Arduino->read();
-                if(resmsg[resmsg.size() - 1] == '\n') {
-                    cout << "RECEIVED BACK: " << resmsg << std::endl;
-                    resmsg = "";
-                    break;
-                }
-            }*/
-        }
-        else {
-            std::chrono::duration<double, std::micro> retry_span = std::chrono::duration_cast<std::chrono::duration<double, std::micro>>(tmr_start - tmr_retry);
-            double rtr = retry_span.count()/1000;
-            if(rtr > 2000) {
-                SerialPort * tmp = Arduino;
-                Arduino = new SerialPort(ArduinoNameRX, 115200);
-                delete tmp;
-                tmr_retry = chrono::high_resolution_clock::now();
-            }
-        }
-        auto tmr_end = chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::micro> time_span = std::chrono::duration_cast<std::chrono::duration<double, std::micro>>(tmr_end - tmr_start);
-        //std::cout << "TEMPO IMPIEGATO: " << time_span.count()/1000 << " ms" << std::endl;
-        //arqserial->DebugPrintLn(actualmsg);
         //push_to_log_vector(log, actualmsg);
     }
 
@@ -557,7 +523,7 @@ public:
     void Command_Features()
     {
         string tmp = "N";
-        tmp = "G"; arqserial->WriteString(tmp); // GEAR
+        //tmp = "G"; arqserial->WriteString(tmp); // GEAR
         tmp = "N"; arqserial->WriteString(tmp); // Name
         tmp = "I"; arqserial->WriteString(tmp); // UNIQUE ID
         tmp = "J"; arqserial->WriteString(tmp); // Additional buttons
@@ -590,7 +556,7 @@ public:
         parsedData.gear__rpm_leds &= 0x0F;
         parsedData.gear__rpm_leds |= (atoi(&gear) << 4);
         //std::cout << "GEAR: " << std::dec << gear << std::endl;
-        push_to_log_vector(log, string_format("Sending: %d as G CMD", atoi(&gear)));
+        //push_to_log_vector(log, string_format("Sending: %d as G CMD", atoi(&gear)));
     }
 
     void parseBuffer() {
@@ -640,6 +606,9 @@ DWORD WINAPI SH_Commands(LPVOID lpParam)
     uint8_t err_counter = 0;
     while (true)
     {
+        printf("POINTER: %p\n", feeder->vol_board);
+        //CREARE THREAD CHE GESTISCE LA RICHIESTA PER AUMENTARE CAPACITA' DI GESTIONE?
+        static auto tmr_start = chrono::high_resolution_clock::now();
         if (arqserial.Available() > 0 || 1 == 1)
         {
             uint8_t cc = arqserial.read();
@@ -688,6 +657,9 @@ DWORD WINAPI SH_Commands(LPVOID lpParam)
                 //std::cout << "Read Non Header Byte=" << std::hex << (int)cc << std::dec << '\n';
             }
         }
+        static auto tmr_end = chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::micro> time_span = std::chrono::duration_cast<std::chrono::duration<double, std::micro>>(tmr_end - tmr_start);
+        feeder->execTime =  1 / (time_span.count()/1000000);
     }
     feeder->add_to_log("Exiting From Thread...");
     return 0;
