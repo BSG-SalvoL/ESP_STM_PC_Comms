@@ -448,10 +448,6 @@ public:
                 vol_board->setSH(shdata);
             if(vol_board != nullptr) {
                 vol_board->notify = true;
-                cout << "TEST3: " << endl;
-            }
-            else {
-                this->vol_board = SG_GUI::getInstance().vol_board;
             }
         }
         catch (const std::exception& e) {
@@ -606,7 +602,6 @@ DWORD WINAPI SH_Commands(LPVOID lpParam)
     uint8_t err_counter = 0;
     while (true)
     {
-        printf("POINTER: %p\n", feeder->vol_board);
         //CREARE THREAD CHE GESTISCE LA RICHIESTA PER AUMENTARE CAPACITA' DI GESTIONE?
         static auto tmr_start = chrono::high_resolution_clock::now();
         if (arqserial.Available() > 0 || 1 == 1)

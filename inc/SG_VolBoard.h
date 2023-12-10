@@ -135,6 +135,7 @@ class SG_VolBoardBLE : public SG_VolBoard {
             RecvSerial = new SerialPort(RECV_COM_NAME.c_str(), baudrate);
             sendName = SEND_COM_NAME;
             recvName = RECV_COM_NAME;
+            run();
         }
 
         bool is_connected() {
@@ -192,8 +193,12 @@ class SG_VolBoardBLE : public SG_VolBoard {
             return false;
         }
         bool send(json data) {
-            if(SendSerial->isConnected())
-                SendSerial->writeSerialPort(data.dump().c_str(), data.dump().size());
+            if(SendSerial->isConnected()) {
+                if(SendSerial->writeSerialPort(data.dump().c_str(), data.dump().size())) {
+                    add_to_log(data.dump().c_str());
+                    return true;
+                }
+            }
             return false;
         }
         json receive() {

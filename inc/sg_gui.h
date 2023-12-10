@@ -460,6 +460,10 @@ class SG_GUI {
                 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar);
             ImGui::SetWindowSize(ImVec2(win_x, win_y), true); 
             ImGui::SetWindowPos(ImVec2(0,0), true);
+            
+            if(SH_Feeder.vol_board == nullptr)
+                SH_Feeder.vol_board = this->vol_board;
+            
             ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_AutoSelectNewTabs | ImGuiTabBarFlags_Reorderable;
             if(ImGui::BeginTabBar("TABS", tab_bar_flags)){
                 if(ImGui::BeginTabItem("Connections")) {
